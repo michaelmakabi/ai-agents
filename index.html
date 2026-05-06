@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Makabi Workforce — Command Center</title>
+<meta name="description" content="The command center for Master Makabi's 113-agent autonomous workforce. Org chart, agent directory, and live routing planner." />
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230a0a0a'/><text x='32' y='44' text-anchor='middle' font-family='Georgia' font-size='36' fill='%23d4af37'>M</text></svg>" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --bg-2: #111114;
+    --bg-3: #18181c;
+    --line: #2a2a30;
+    --gold: #d4af37;
+    --gold-soft: #b89a30;
+    --champagne: #e8c468;
+    --text: #f5f0e1;
+    --muted: #a09989;
+    --accent: #8b6f1f;
+    --danger: #d4453d;
+    --ok: #4daf68;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; margin: 0; }
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212,175,55,0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(212,175,55,0.04), transparent);
+    min-height: 100vh;
+  }
+  .serif { font-family: 'Georgia', 'Times New Roman', serif; letter-spacing: -0.01em; }
+  .gold { color: var(--gold); }
+  .gold-bg { background: var(--gold); color: #0a0a0c; }
+  .panel { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; }
+  .panel-2 { background: var(--bg-3); border: 1px solid var(--line); border-radius: 8px; }
+  .gold-border { border-color: rgba(212,175,55,0.4); }
+  .btn { padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500; transition: all 0.15s ease; cursor: pointer; border: 1px solid var(--line); background: var(--bg-3); color: var(--text); }
+  .btn:hover { background: var(--bg-2); border-color: var(--gold-soft); }
+  .btn-gold { background: var(--gold); color: #0a0a0c; border-color: var(--gold); font-weight: 600; }
+  .btn-gold:hover { background: var(--champagne); border-color: var(--champagne); }
+  .input { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.75rem; color: var(--text); width: 100%; }
+  .input:focus { outline: none; border-color: var(--gold-soft); }
+  .tab { padding: 0.75rem 1.25rem; border-bottom: 2px solid transparent; cursor: pointer; color: var(--muted); transition: all 0.15s ease; font-weight: 500; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; background: var(--bg-3); border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  .badge-gold { background: rgba(212,175,55,0.12); border-color: rgba(212,175,55,0.4); color: var(--champagne); }
+  .badge-lead { background: rgba(212,175,55,0.2); border-color: var(--gold); color: var(--gold); font-weight: 600; }
+  .badge-red { background: rgba(212,69,61,0.15); border-color: rgba(212,69,61,0.5); color: #f08a7a; }
+  .badge-green { background: rgba(77,175,104,0.12); border-color: rgba(77,175,104,0.4); color: #7adf95; }
+  .badge-yellow { background: rgba(212,175,55,0.08); border-color: rgba(212,175,55,0.3); color: #e8c468; }
+  .agent-card { transition: all 0.15s ease; cursor: pointer; }
+  .agent-card:hover { transform: translateY(-2px); border-color: var(--gold-soft); }
+  .dept-tile { transition: all 0.15s ease; }
+  .dept-tile:hover { border-color: var(--gold-soft); }
+  .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar::-webkit-scrollbar-track { background: var(--bg); }
+  .scrollbar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .scrollbar::-webkit-scrollbar-thumb:hover { background: var(--gold-soft); }
+  .pulse { animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .typing::after { content: '▋'; animation: pulse 1s infinite; color: var(--gold); margin-left: 2px; }
+  .org-line { stroke: var(--line); stroke-width: 1; fill: none; }
+  .org-line-active { stroke: var(--gold); stroke-width: 2; fill: none; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50; backdrop-filter: blur(4px); }
+  .modal-content { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; max-width: 720px; width: 90%; max-height: 85vh; overflow-y: auto; }
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: '▸'; display: inline-block; margin-right: 0.5rem; transition: transform 0.15s ease; color: var(--gold); }
+  details[open] > summary::before { transform: rotate(90deg); }
+  pre.cmd-out { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; overflow-x: auto; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.8rem; color: #c0c8d4; white-space: pre-wrap; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- HEADER -->
+<header class="border-b border-[var(--line)] bg-[var(--bg-2)]/60 backdrop-blur sticky top-0 z-30">
+  <div class="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg gold-bg flex items-center justify-center serif text-2xl font-bold">M</div>
+      <div>
+        <div class="serif text-xl">Makabi Workforce</div>
+        <div class="text-xs text-[var(--muted)] uppercase tracking-widest">Command Center</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="badge badge-green"><span class="inline-block w-2 h-2 rounded-full bg-green-400 mr-1.5"></span>113 agents · 18 skills · live</span>
+      <button id="settingsBtn" class="btn text-sm">⚙ Settings</button>
+    </div>
+  </div>
+  <nav class="max-w-[1600px] mx-auto px-6 flex border-t border-[var(--line)]">
+    <div class="tab active" data-tab="org">Org Chart</div>
+    <div class="tab" data-tab="directory">Agent Directory</div>
+    <div class="tab" data-tab="planner">Routing Planner</div>
+    <div class="tab" data-tab="execute">Execute</div>
+  </nav>
+</header>
+
+<main class="max-w-[1600px] mx-auto px-6 py-8">
+
+<!-- TAB: ORG CHART -->
+<section id="tab-org" class="tab-panel">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <h1 class="serif text-3xl mb-1">Organizational Hierarchy</h1>
+      <p class="text-[var(--muted)] text-sm">14 departments. Hybrid hierarchy: department leads run their own teams; cross-functional work routes through Chief of Staff.</p>
+    </div>
+    <div class="text-xs text-[var(--muted)]">Click any role to see details</div>
+  </div>
+
+  <!-- Top of tree: Master Makabi -->
+  <div class="flex flex-col items-center mb-8">
+    <div class="panel gold-border px-6 py-3 text-center mb-3" style="background: linear-gradient(180deg, rgba(212,175,55,0.12), rgba(212,175,55,0.02));">
+      <div class="text-xs uppercase tracking-widest text-[var(--gold)] mb-1">Owner</div>
+      <div class="serif text-2xl">Master Makabi</div>
+      <div class="text-xs text-[var(--muted)] mt-1">COO BRiX · Founder Loren AI · 1PM AI · MTIP CRE · BroadBridge</div>
+    </div>
+    <svg width="2" height="40"><line x1="1" y1="0" x2="1" y2="40" class="org-line-active"/></svg>
+    <div class="panel gold-border px-6 py-3 text-center cursor-pointer agent-card" data-agent="chief-of-staff" style="background: linear-gradient(180deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04));">
+      <div class="text-xs uppercase tracking-widest gold mb-1">Top Router</div>
+      <div class="serif text-xl">chief-of-staff</div>
+      <div class="text-xs text-[var(--muted)] mt-1">Decomposes asks → routes pods → enforces QA gate</div>
+    </div>
+    <svg width="2" height="40"><line x1="1" y1="0" x2="1" y2="40" class="org-line"/></svg>
+  </div>
+
+  <!-- Departments grid -->
+  <div id="depts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+</section>
+
+<!-- TAB: DIRECTORY -->
+<section id="tab-directory" class="tab-panel hidden">
+  <div class="flex items-end justify-between mb-6">
+    <div>
+      <h1 class="serif text-3xl mb-1">Agent Directory</h1>
+      <p class="text-[var(--muted)] text-sm">All 113 agents. Search by name, role, department, or capability.</p>
+    </div>
+    <div class="text-xs text-[var(--muted)]" id="filterStats"></div>
+  </div>
+
+  <div class="flex gap-3 mb-4 flex-wrap">
+    <input id="searchInput" class="input flex-1" placeholder="Search agents — by name, capability, brand context (BRiX, Loren AI, 1PM)…" style="min-width: 260px;" />
+    <select id="deptFilter" class="input" style="max-width: 240px;">
+      <option value="">All departments</option>
+    </select>
+  </div>
+
+  <div id="agentList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+</section>
+
+<!-- TAB: PLANNER -->
+<section id="tab-planner" class="tab-panel hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <div class="lg:col-span-2 space-y-4">
+      <div>
+        <h1 class="serif text-3xl mb-1">Routing Planner</h1>
+        <p class="text-[var(--muted)] text-sm">Tell me what you want done. I'll pick the agents, draw the DAG, and generate the execution command — optimized for speed, cost, and quality without losing process control.</p>
+      </div>
+
+      <div class="panel p-4">
+        <label class="text-xs uppercase tracking-widest gold mb-2 block">Your ask</label>
+        <textarea id="askInput" rows="4" class="input scrollbar resize-none" placeholder="e.g. Launch a cold outbound campaign for Loren AI to Florida CRE brokers — 200 leads, A2P-cleared, by end of week." spellcheck="false"></textarea>
+        <div class="flex items-center justify-between mt-3">
+          <div class="flex items-center gap-2 text-xs text-[var(--muted)]">
+            <span>Mode:</span>
+            <select id="planMode" class="bg-transparent border border-[var(--line)] rounded px-2 py-1 text-xs">
+              <option value="balanced">Balanced (default)</option>
+              <option value="fast">Fastest path</option>
+              <option value="cheap">Cheapest path</option>
+              <option value="thorough">Maximum quality (more QA)</option>
+            </select>
+          </div>
+          <button id="planBtn" class="btn-gold btn">Generate plan →</button>
+        </div>
+      </div>
+
+      <div id="planResult" class="hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="serif text-xl">Execution plan</h2>
+          <div class="flex items-center gap-2">
+            <button id="copyCmdBtn" class="btn text-xs">📋 Copy Claude Code command</button>
+            <button id="executeBtn" class="btn btn-gold text-xs">▶ Execute now</button>
+          </div>
+        </div>
+        <div id="planContent" class="space-y-3"></div>
+      </div>
+
+      <div id="historyContainer">
+        <div class="text-xs text-[var(--muted)] uppercase tracking-widest mb-2">Recent plans</div>
+        <div id="history" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="panel p-4">
+        <div class="text-xs uppercase tracking-widest gold mb-2">Quick patterns</div>
+        <div class="space-y-2 text-sm">
+          <button class="quick-pat w-full text-left p-2 rounded hover:bg-[var(--bg-3)]" data-pat="Launch a cold outbound campaign for Loren AI to Florida CRE brokers — A2P-cleared, 200 leads, by EOD Friday.">📞 Cold outbound launch</button>
+          <button class="quick-pat w-full text-left p-2 rounded hover:bg-[var(--bg-3)]" data-pat="Build the May investor update for the BRiX LP list. Hey.com format. Numbers + narrative + asks.">💼 Monthly LP update</button>
+          <button class="quick-pat w-full text-left p-2 rounded hover:bg-[var(--bg-3)]" data-pat="Underwrite a CRE deal: 1234 Main St, Miami FL, $4.2M asking, 72,000 SF industrial, 7-cap going-in. Output deal memo.">🏢 CRE deal underwrite</button>
+          <button class="quick-pat w-full text-left p-2 rounded hover:bg-[var(--bg-3)]" data-pat="Build and ship a landing page for Loren AI Skincare on a new subdomain. Dark luxury aesthetic, lead capture, Powered by LOREN AI footer.">🚀 Landing page deploy</button>
+          <button class="quick-pat w-full text-left p-2 rounded hover:bg-[var(--bg-3)]" data-pat="Build the Q2 board pack: KPIs, strategic moves, top 3 risks, asks. Mike letter on top.">📊 Quarterly board pack</button>
+          <button class="quick-pat w-full text-left p-2 rounded hover:bg-[var(--bg-3)]" data-pat="Audit the Loren AI website for brand compliance, fact accuracy, and TCPA-related risk.">🛡 Brand & risk audit</button>
+        </div>
+      </div>
+
+      <div class="panel p-4">
+        <div class="text-xs uppercase tracking-widest gold mb-2">Orchestration rules</div>
+        <ul class="text-xs text-[var(--muted)] space-y-1.5">
+          <li>• Within department: peer-to-peer is allowed</li>
+          <li>• Across departments: routes through chief-of-staff</li>
+          <li>• Investor / regulator-facing: factcheck-auditor + regulatory-* required</li>
+          <li>• Brand-touching: brand-compliance-auditor mandatory</li>
+          <li>• Outbound: a2p-compliance + Mike's explicit yes</li>
+          <li>• Red-class action (irreversible): Mike approval required</li>
+          <li>• Always close with decision-logger</li>
+        </ul>
+      </div>
+
+      <div class="panel p-4">
+        <div class="text-xs uppercase tracking-widest gold mb-2">Cost & speed posture</div>
+        <div class="text-xs text-[var(--muted)] space-y-1.5">
+          <div><b class="text-[var(--text)]">Balanced</b>: parallel where safe, single QA pass</div>
+          <div><b class="text-[var(--text)]">Fastest</b>: max parallelism, skip optional research</div>
+          <div><b class="text-[var(--text)]">Cheapest</b>: serial, Haiku for sub-tasks</div>
+          <div><b class="text-[var(--text)]">Maximum quality</b>: double QA pass, full factcheck</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TAB: EXECUTE -->
+<section id="tab-execute" class="tab-panel hidden">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="space-y-4">
+      <div>
+        <h1 class="serif text-3xl mb-1">Execute</h1>
+        <p class="text-[var(--muted)] text-sm">Bridge between this page and your Claude Code / Cowork sessions. Runs the workforce on the plan you approved in the Routing Planner.</p>
+      </div>
+
+      <div class="panel p-4">
+        <div class="text-xs uppercase tracking-widest gold mb-3">Method 1 — Copy command, paste into Claude Code</div>
+        <p class="text-xs text-[var(--muted)] mb-3">Zero infrastructure. Plan generates a self-contained <code class="text-[var(--gold)]">claude "..."</code> command. Copy, paste into your terminal, work appears in Claude Code's stream.</p>
+        <pre class="cmd-out">claude "&lt;plan command will appear here after planning&gt;"</pre>
+        <div class="text-xs text-[var(--muted)] mt-2">✓ Already working — generate a plan in the Routing Planner tab.</div>
+      </div>
+
+      <div class="panel p-4">
+        <div class="text-xs uppercase tracking-widest gold mb-3">Method 2 — Local bridge (one-time setup)</div>
+        <p class="text-xs text-[var(--muted)] mb-3">Run a tiny Node.js bridge on your laptop. This page POSTs the plan to <code>localhost:7777</code>, the bridge spawns Claude Code with the right prompt, and streams stdout back here as it runs. You can switch over to Cowork or Claude Code mid-task to keep working in those environments.</p>
+        <details>
+          <summary class="text-sm gold mb-2">Show bridge install (~30s)</summary>
+          <div class="mt-3 space-y-2">
+            <div class="text-xs text-[var(--muted)]">1. Save this file as <code>workforce-bridge.js</code> in any folder:</div>
+            <pre class="cmd-out" id="bridgeCode">// workforce-bridge.js — local execution bridge for the Makabi Workforce
+const http = require('http');
+const { spawn } = require('child_process');
+const PORT = 7777;
+const ALLOWED_ORIGIN = '*'; // restrict in production
+
+http.createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.end();
+
+  if (req.method === 'POST' &amp;&amp; req.url === '/run') {
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', () => {
+      const { prompt } = JSON.parse(body);
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.flushHeaders();
+      const child = spawn('claude', [prompt], { shell: true });
+      child.stdout.on('data', d => res.write(`data: ${JSON.stringify({type:'out', text:d.toString()})}\n\n`));
+      child.stderr.on('data', d => res.write(`data: ${JSON.stringify({type:'err', text:d.toString()})}\n\n`));
+      child.on('close', code => { res.write(`data: ${JSON.stringify({type:'done', code})}\n\n`); res.end(); });
+    });
+  } else {
+    res.statusCode = 404; res.end();
+  }
+}).listen(PORT, () => console.log(`Workforce bridge listening on http://localhost:${PORT}`));</pre>
+            <div class="text-xs text-[var(--muted)]">2. In that folder, run: <code class="gold">node workforce-bridge.js</code></div>
+            <div class="text-xs text-[var(--muted)]">3. Below, set bridge URL to <code>http://localhost:7777</code> and toggle ON.</div>
+          </div>
+        </details>
+        <div class="mt-4 flex items-center gap-3">
+          <input id="bridgeUrl" class="input" placeholder="http://localhost:7777" />
+          <label class="flex items-center gap-2 text-xs">
+            <input type="checkbox" id="bridgeOn" />
+            <span>Bridge ON</span>
+          </label>
+          <button id="bridgeTestBtn" class="btn text-xs">Test</button>
+        </div>
+        <div id="bridgeStatus" class="text-xs mt-2 text-[var(--muted)]"></div>
+      </div>
+
+      <div class="panel p-4">
+        <div class="text-xs uppercase tracking-widest gold mb-3">Method 3 — Cowork hand-off</div>
+        <p class="text-xs text-[var(--muted)]">Open a Cowork session, paste the generated command, and Claude Code (or Cowork) drives the workforce from there. Status updates flow back into your Cowork chat. Switch between this page, Cowork, and Claude Code freely — they all read the same <code>~/.claude/agents/</code> + <code>~/.claude/skills/</code> tree.</p>
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="panel p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs uppercase tracking-widest gold">Live execution stream</div>
+          <button id="clearStreamBtn" class="text-xs text-[var(--muted)] hover:text-[var(--text)]">Clear</button>
+        </div>
+        <div id="execStream" class="cmd-out scrollbar" style="min-height: 360px; max-height: 60vh; overflow-y: auto;">
+          <span class="text-[var(--muted)]">Waiting. Generate a plan, then hit "Execute now".</span>
+        </div>
+      </div>
+
+      <div class="panel p-4">
+        <div class="text-xs uppercase tracking-widest gold mb-3">Tasks today</div>
+        <div id="tasksToday" class="text-xs text-[var(--muted)] space-y-1.5">
+          <div class="text-[var(--muted)] italic">No tasks yet today.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- AGENT MODAL -->
+<div id="agentModal" class="modal hidden">
+  <div class="modal-content scrollbar">
+    <div class="p-6">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <div id="modalDept" class="text-xs uppercase tracking-widest gold mb-1"></div>
+          <h2 id="modalName" class="serif text-3xl"></h2>
+          <div id="modalRole" class="text-[var(--muted)]"></div>
+        </div>
+        <button id="closeModal" class="text-2xl text-[var(--muted)] hover:text-[var(--text)] leading-none">×</button>
+      </div>
+      <div id="modalBody" class="space-y-4"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settingsModal" class="modal hidden">
+  <div class="modal-content scrollbar" style="max-width: 540px;">
+    <div class="p-6">
+      <div class="flex items-start justify-between mb-4">
+        <h2 class="serif text-2xl">Settings</h2>
+        <button id="closeSettings" class="text-2xl text-[var(--muted)] hover:text-[var(--text)] leading-none">×</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs uppercase tracking-widest gold mb-2 block">Anthropic API Key</label>
+          <input id="apiKeyInput" class="input" placeholder="sk-ant-…" type="password"/>
+          <div class="text-xs text-[var(--muted)] mt-1">Stored only in your browser's localStorage. Used by the Routing Planner.</div>
+        </div>
+        <div>
+          <label class="text-xs uppercase tracking-widest gold mb-2 block">Planner model</label>
+          <select id="modelSelect" class="input">
+            <option value="claude-sonnet-4-6">Claude Sonnet 4.6 (recommended)</option>
+            <option value="claude-opus-4-6">Claude Opus 4.6 (best quality)</option>
+            <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (cheapest)</option>
+          </select>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button id="saveSettings" class="btn-gold btn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="border-t border-[var(--line)] mt-16 py-6">
+  <div class="max-w-[1600px] mx-auto px-6 flex items-center justify-between text-xs text-[var(--muted)]">
+    <div>© 2026 Makabi Workforce — Internal tool for Master Makabi</div>
+    <div class="flex items-center gap-2">
+      <span>Powered by</span>
+      <span class="serif text-[var(--gold)]" style="letter-spacing: 0.1em;">LOREN AI</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// =====================================================================
+// AGENT DATA — full 113-agent roster
+// =====================================================================
+const DEPARTMENTS = [
+  { id: 'ceo', name: 'Office of the CEO', lead: 'chief-of-staff', icon: '👑', desc: 'Top-of-house. Routing, executive function, decision capture.' },
+  { id: 'sales', name: 'Sales', lead: 'head-of-sales', icon: '💼', desc: 'Pipeline, deals, proposals, close.' },
+  { id: 'marketing', name: 'Marketing', lead: 'head-of-marketing', icon: '📣', desc: 'Brand, demand, positioning, creative.' },
+  { id: 'cs', name: 'Customer Success', lead: 'head-of-cs', icon: '🤝', desc: 'Onboarding, retention, support, voice of customer.' },
+  { id: 'ops', name: 'Operations', lead: 'head-of-ops', icon: '⚙️', desc: 'Process, vendors, internal tooling, automation.' },
+  { id: 'finance', name: 'Finance & Accounting', lead: 'controller', icon: '💵', desc: 'Books, billing, forecasting, tax, treasury.' },
+  { id: 'legal', name: 'Legal & Compliance', lead: 'general-counsel', icon: '⚖️', desc: 'Contracts, compliance, IP, privacy, regulated areas.' },
+  { id: 'people', name: 'People & Talent', lead: 'head-of-people', icon: '👥', desc: 'Small human team coord, performance, comms.' },
+  { id: 'eng', name: 'Engineering & Product', lead: 'cto', icon: '🛠', desc: 'Software, infra, security, product.' },
+  { id: 'data', name: 'Data & Analytics', lead: 'head-of-data', icon: '📊', desc: 'BI, attribution, experiments, revenue analytics.' },
+  { id: 're', name: 'Real Estate', lead: 'head-of-real-estate', icon: '🏢', desc: 'CRE/RE underwriting, comps, acquisitions, asset mgmt.' },
+  { id: 'voice', name: 'Voice & Outbound', lead: 'head-of-voice', icon: '📞', desc: 'Loren AI core: voice agents, telephony, A2P, dialer.' },
+  { id: 'cap', name: 'Capital Markets & IR', lead: 'head-of-capital-markets', icon: '📈', desc: 'Raises, IR, decks, data room, cap table, competitive.' },
+  { id: 'qa', name: 'Quality & Risk', lead: 'head-of-qa', icon: '🛡', desc: 'Final gate. Brand, fact, risk, incident response.' },
+];
+
+const AGENTS = [
+  // Office of the CEO
+  { id:'chief-of-staff', dept:'ceo', isLead:true, role:'Chief of Staff (top router)', purpose:'Receives any inbound task, decomposes it, delegates to dept leads. The orchestrator.', reportsTo:'Master Makabi', tools:'All read tools, Task delegation', capabilities:['Cross-functional routing','Pod assembly','QA gate orchestration','Priority resolution when work competes'], comms:'Direct line to Mike. All cross-department asks pass through here. Resolves prioritization conflicts.' },
+  { id:'coo-agent', dept:'ceo', role:'COO Agent', purpose:'Executes operational decisions. Owns cross-functional projects and process.', reportsTo:'chief-of-staff', tools:'Read, Write, Edit, Task', capabilities:['Cross-functional project ownership','Process design','Operational decision execution'], comms:'Pairs with chief-of-staff on multi-dept initiatives.' },
+  { id:'executive-assistant', dept:'ceo', role:'Executive Assistant', purpose:"Calendar, email triage, meeting prep, follow-ups. Speaks in Mike's voice.", reportsTo:'chief-of-staff', tools:'Email, Calendar, Read', capabilities:['Calendar management','Email triage','Meeting prep','Follow-up tracking'], comms:'Gates Mike\'s calendar; coordinates with all dept leads on meeting requests.' },
+  { id:'strategic-advisor', dept:'ceo', role:'Strategic Advisor', purpose:"Long-horizon thinking. Critiques strategy. Plays devil's advocate.", reportsTo:'chief-of-staff', tools:'Read, WebSearch, WebFetch', capabilities:['Strategy critique','Devil\'s advocate framing','Competitive analysis','Long-range scenario planning'], comms:'Pulled in for major decisions. Optional but high-leverage on big bets.' },
+  { id:'board-prep-agent', dept:'ceo', role:'Board Prep Agent', purpose:'Builds investor updates, board decks, KPI rollups.', reportsTo:'chief-of-staff', tools:'Read, Write, Edit', capabilities:['Board deck assembly','KPI rollups','Letter from Mike drafts','Asks list compilation'], comms:'Pairs with investor-relations and head-of-data on numbers; final pass via head-of-qa.' },
+  { id:'decision-logger', dept:'ceo', role:'Decision Logger', purpose:'Captures every strategic decision into Makabi Memory. Traces rationale over time.', reportsTo:'chief-of-staff', tools:'Read, Write, MCP-memory', capabilities:['Decision capture','Rationale tracing','Topic-tagged memory writes'], comms:'Always called at end of any cross-functional pod execution. Read by future pods for context.' },
+  { id:'meeting-synthesizer', dept:'ceo', role:'Meeting Synthesizer', purpose:"Ingests transcripts/recordings, produces action items + summary in Mike's voice.", reportsTo:'chief-of-staff', tools:'Read, Write', capabilities:['Transcript synthesis','Action item extraction','Summary in Mike\'s voice'], comms:'Output goes to relevant dept leads as task assignments.' },
+
+  // Sales
+  { id:'head-of-sales', dept:'sales', isLead:true, role:'Head of Sales', purpose:'Owns pipeline, forecast, sales process. Routes to specialists.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['Pipeline ownership','Forecast accuracy','Sales process design','Specialist routing'], comms:'Owns outcome for all sales work. Synthesizes specialist outputs into a single deliverable.' },
+  { id:'sdr-cold-outbound', dept:'sales', role:'SDR (Cold Outbound)', purpose:"Cold email + cold call drafts. Master Makabi style: bold, tension-based, pattern-interrupt.", reportsTo:'head-of-sales', tools:'Read, Write, Email', capabilities:['Cold email copywriting','Cold call scripts','Pattern-interrupt openers','Subject line A/B'], comms:'Outputs reviewed by a2p-compliance before any campaign launches.' },
+  { id:'sdr-inbound', dept:'sales', role:'SDR (Inbound)', purpose:'Qualifies inbound leads. MEDDPICC. Books discovery calls.', reportsTo:'head-of-sales', tools:'Read, Write, Email, Calendar', capabilities:['Lead qualification','MEDDPICC scoring','Discovery call booking'], comms:'Hands qualified leads to account-executive or enterprise-ae.' },
+  { id:'account-executive', dept:'sales', role:'Account Executive', purpose:'Owns deals from discovery to close. Proposal + contract orchestration.', reportsTo:'head-of-sales', tools:'Read, Write, Edit, Email', capabilities:['Deal management','Proposal authoring','Contract redlining coordination'], comms:'Loops in sales-engineer for technical, deal-desk for pricing, contracts-attorney for legal.' },
+  { id:'enterprise-ae', dept:'sales', role:'Enterprise AE', purpose:'Multi-stakeholder, longer cycle, custom-priced deals. BRiX/1PM enterprise tier.', reportsTo:'head-of-sales', tools:'Read, Write, Edit, Email', capabilities:['Enterprise sales','Multi-threaded buying committees','Custom pricing'], comms:'Always pairs with sales-engineer + deal-desk. Escalates >$50k to head-of-sales.' },
+  { id:'sales-engineer', dept:'sales', role:'Sales Engineer', purpose:'Technical demos, integration scoping, proof of concept design.', reportsTo:'head-of-sales', tools:'Read, Write, Edit, Bash', capabilities:['Technical demos','PoC design','Integration scoping'], comms:'Bridges to engineering & product for feasibility checks.' },
+  { id:'deal-desk', dept:'sales', role:'Deal Desk', purpose:'Pricing approval, custom contract terms, discount math.', reportsTo:'head-of-sales', tools:'Read, Write', capabilities:['Pricing strategy','Discount math','Custom term review'], comms:'Final pricing approval. Loops controller for >$25k discounts.' },
+  { id:'renewal-expansion-ae', dept:'sales', role:'Renewal & Expansion AE', purpose:'Owns existing accounts for renewal + upsell. Coordinates with CSM.', reportsTo:'head-of-sales', tools:'Read, Write, Email', capabilities:['Renewal management','Expansion prospecting','Multi-year deal structuring'], comms:'Pairs with csm-account-manager on health signals.' },
+  { id:'revops', dept:'sales', role:'RevOps', purpose:'Pipeline hygiene, CRM data quality, sales reporting, commission calc.', reportsTo:'head-of-sales', tools:'Read, Write, Edit, MCP-ghl', capabilities:['Pipeline hygiene','CRM data quality','Commission calculation','Forecast tooling'], comms:'Owns the GHL subaccounts; talks to head-of-data for cross-system reporting.' },
+
+  // Marketing
+  { id:'head-of-marketing', dept:'marketing', isLead:true, role:'Head of Marketing', purpose:'Owns brand, demand, positioning. Routes to specialists.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['Brand ownership','Demand generation','Positioning','Specialist routing'], comms:'Owns all marketing outcomes; synthesizes specialist outputs.' },
+  { id:'brand-strategist', dept:'marketing', role:'Brand Strategist', purpose:'Voice, narrative, category positioning. Guards brand integrity.', reportsTo:'head-of-marketing', tools:'Read, Write', capabilities:['Voice & tone guidelines','Narrative architecture','Category positioning'], comms:'Sets the framing every other marketing agent works within.' },
+  { id:'content-writer-longform', dept:'marketing', role:'Long-form Content Writer', purpose:'Blog posts, white papers, thought leadership.', reportsTo:'head-of-marketing', tools:'Read, Write, Edit, WebSearch', capabilities:['Blog posts','White papers','Thought leadership pieces','SEO-aware drafting'], comms:'Briefed by brand-strategist; SEO input from seo-strategist.' },
+  { id:'copywriter-conversion', dept:'marketing', role:'Conversion Copywriter', purpose:'Landing pages, ads, CTAs. Direct-response style.', reportsTo:'head-of-marketing', tools:'Read, Write, Edit', capabilities:['Landing page copy','Ad creative','CTAs','A/B variants'], comms:'Pairs with landing-page-builder for production; paid-media-buyer for ad placements.' },
+  { id:'seo-strategist', dept:'marketing', role:'SEO Strategist', purpose:'Keyword research, on-page, internal linking, content gaps.', reportsTo:'head-of-marketing', tools:'Read, Write, WebSearch, WebFetch', capabilities:['Keyword research','On-page optimization','Internal linking','Content gap analysis'], comms:'Briefs content-writer-longform; checks landing-page-builder output.' },
+  { id:'paid-media-buyer', dept:'marketing', role:'Paid Media Buyer', purpose:'Google, Meta, LinkedIn ads. Creative briefs, audience targeting, budget pacing.', reportsTo:'head-of-marketing', tools:'Read, Write, Edit', capabilities:['Ad campaign management','Audience targeting','Budget pacing','Creative briefs'], comms:'Sources creative from copywriter-conversion + creative-director.' },
+  { id:'lifecycle-email', dept:'marketing', role:'Lifecycle Email', purpose:'Drip campaigns, nurture sequences. Hey.com plain-text format for Mike\'s lists.', reportsTo:'head-of-marketing', tools:'Read, Write', capabilities:['Drip sequences','Nurture flows','Hey.com plain-text email','Personalization tokens'], comms:'Outputs paste-ready blocks for Mike to send from his client.' },
+  { id:'social-media-manager', dept:'marketing', role:'Social Media Manager', purpose:'LinkedIn, X, Instagram. Multi-brand voice.', reportsTo:'head-of-marketing', tools:'Read, Write, WebSearch', capabilities:['Multi-platform social','Multi-brand voice','Content calendar','Engagement strategy'], comms:'Coordinates with creative-director on visuals.' },
+  { id:'pr-comms', dept:'marketing', role:'PR & Comms', purpose:'Press releases, media pitches, crisis comms.', reportsTo:'head-of-marketing', tools:'Read, Write, Edit', capabilities:['Press releases','Media pitches','Crisis comms','Spokesperson prep'], comms:'Crisis path: pr-comms → general-counsel → risk-officer → head-of-qa → Mike.' },
+  { id:'partnerships-manager', dept:'marketing', role:'Partnerships Manager', purpose:'BD partnerships, co-marketing, integration partners.', reportsTo:'head-of-marketing', tools:'Read, Write, Email', capabilities:['BD partnership development','Co-marketing','Integration partner mgmt'], comms:'Hands signed partners to relevant dept leads.' },
+  { id:'creative-director', dept:'marketing', role:'Creative Director', purpose:'Visual direction, brand consistency across deliverables. Enforces design tokens.', reportsTo:'head-of-marketing', tools:'Read, Write, Edit', capabilities:['Visual direction','Design token enforcement','Brand consistency'], comms:'Reviews every visual deliverable. Pairs with brand-compliance-auditor on QA.' },
+  { id:'landing-page-builder', dept:'marketing', role:'Landing Page Builder', purpose:'Builds Lovable/HTML landing pages with proper brand tokens + Loren AI footer.', reportsTo:'head-of-marketing', tools:'Read, Write, Edit, Bash', capabilities:['Lovable project creation','HTML landing pages','Brand token application','Loren AI footer','Subdomain wiring'], comms:'Coordinates with creative-director, copywriter-conversion. Final QA via brand-compliance-auditor.' },
+
+  // Customer Success
+  { id:'head-of-cs', dept:'cs', isLead:true, role:'Head of Customer Success', purpose:'Owns retention, NPS, expansion signals. Routes to specialists.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['Retention strategy','NPS ownership','Expansion signal detection'], comms:'Owns all CS outcomes; synthesizes specialist work.' },
+  { id:'onboarding-specialist', dept:'cs', role:'Onboarding Specialist', purpose:'New client setup. Loren AI: 8-12 min A2P, domain, GHL subaccount provisioning.', reportsTo:'head-of-cs', tools:'Read, Write, Edit, Bash', capabilities:['Client onboarding','A2P setup','Domain wiring','GHL subaccount provisioning'], comms:'Hands off to csm-account-manager once live.' },
+  { id:'csm-account-manager', dept:'cs', role:'CSM / Account Manager (alias: MAYA in Loren AI)', purpose:'Ongoing account management. Top accounts like Shihata Nelson.', reportsTo:'head-of-cs', tools:'Read, Write, Email', capabilities:['Account management','QBRs','Health monitoring','Expansion identification'], comms:'Pairs with renewal-expansion-ae on growth signals; churn-rescue on at-risk.' },
+  { id:'support-tier1', dept:'cs', role:'Support Tier 1', purpose:'First-line tickets. Common issues, FAQs. Escalates when stuck.', reportsTo:'head-of-cs', tools:'Read, Write, Email', capabilities:['Ticket triage','FAQ responses','Common issue resolution'], comms:'Escalates to support-tier2 on technical depth.' },
+  { id:'support-tier2', dept:'cs', role:'Support Tier 2', purpose:'Technical escalations. Bug repro, advanced config.', reportsTo:'head-of-cs', tools:'Read, Write, Edit, Bash, Email', capabilities:['Bug reproduction','Advanced config','Technical escalation'], comms:'Escalates to engineering on actual bugs.' },
+  { id:'knowledge-base-manager', dept:'cs', role:'Knowledge Base Manager', purpose:'Owns help center / docs. Keeps articles current.', reportsTo:'head-of-cs', tools:'Read, Write, Edit', capabilities:['Help center maintenance','Article currency','Doc gap analysis'], comms:'Pulls from support-tier1/2 ticket data for gaps.' },
+  { id:'voc-analyst', dept:'cs', role:'Voice of Customer Analyst', purpose:'Synthesizes feedback into product asks.', reportsTo:'head-of-cs', tools:'Read, Write', capabilities:['Feedback synthesis','Theme extraction','Product input prioritization'], comms:'Output flows to product-manager for backlog input.' },
+  { id:'churn-rescue', dept:'cs', role:'Churn Rescue', purpose:'Triggers on at-risk accounts. Save plays, win-backs.', reportsTo:'head-of-cs', tools:'Read, Write, Email', capabilities:['At-risk detection','Save play execution','Win-back campaigns'], comms:'Pulls in csm-account-manager + Mike on top accounts.' },
+
+  // Operations
+  { id:'head-of-ops', dept:'ops', isLead:true, role:'Head of Operations', purpose:'Owns process, vendors, operational SLAs.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['Process ownership','Vendor mgmt','SLA enforcement'], comms:'Cross-cuts every dept; resolves operational conflicts.' },
+  { id:'project-manager', dept:'ops', role:'Project Manager', purpose:'Cross-functional projects. Gantt, dependencies, status.', reportsTo:'head-of-ops', tools:'Read, Write, Edit', capabilities:['Project planning','Dependency tracking','Status reporting','Gantt'], comms:'Coordinates pods that span >2 departments.' },
+  { id:'process-engineer', dept:'ops', role:'Process Engineer', purpose:'Maps + redesigns workflows. Kills manual steps.', reportsTo:'head-of-ops', tools:'Read, Write, Edit', capabilities:['Workflow mapping','Process redesign','Automation candidate identification'], comms:'Hands automation candidates to automation-builder.' },
+  { id:'vendor-procurement', dept:'ops', role:'Vendor Procurement', purpose:'Vendor selection, contract negotiation, renewals tracking.', reportsTo:'head-of-ops', tools:'Read, Write, Email', capabilities:['Vendor evaluation','Contract negotiation','Renewal tracking'], comms:'Pairs with contracts-attorney on legal review.' },
+  { id:'it-systems-admin', dept:'ops', role:'IT Systems Admin', purpose:'Internal tooling, account provisioning, license mgmt.', reportsTo:'head-of-ops', tools:'Read, Write, Edit, Bash', capabilities:['Tool provisioning','License management','Account lifecycle'], comms:'Pairs with team-onboarding for new humans.' },
+  { id:'automation-builder', dept:'ops', role:'Automation Builder', purpose:'Builds n8n/Make/Zapier flows. Connects systems.', reportsTo:'head-of-ops', tools:'Read, Write, Edit, Bash', capabilities:['n8n / Make / Zapier flows','API integration','Cross-system glue'], comms:'Receives candidates from process-engineer.' },
+  { id:'documentation-archivist', dept:'ops', role:'Documentation Archivist', purpose:'SOPs, runbooks, internal wiki. The institutional memory.', reportsTo:'head-of-ops', tools:'Read, Write, Edit', capabilities:['SOP authoring','Runbook maintenance','Internal wiki curation'], comms:'Output is read by every new agent / human onboarding.' },
+
+  // Finance & Accounting
+  { id:'controller', dept:'finance', isLead:true, role:'Controller', purpose:'Top finance role. Closes books, signs reports.', reportsTo:'chief-of-staff', tools:'Read, Write, Edit, MCP-quickbooks', capabilities:['Books close','Financial reporting','Audit-ready posture'], comms:'Final sign-off on all financial output.' },
+  { id:'bookkeeper', dept:'finance', role:'Bookkeeper', purpose:'Day-to-day transaction categorization. QBO integration.', reportsTo:'controller', tools:'Read, Write, MCP-quickbooks', capabilities:['Transaction categorization','QBO management','Bank reconciliation'], comms:'Daily; controller signs off weekly.' },
+  { id:'ar-collections', dept:'finance', role:'AR / Collections', purpose:'Invoicing, follow-ups, aging report.', reportsTo:'controller', tools:'Read, Write, Email, MCP-stripe', capabilities:['Invoicing','Collections follow-up','Aging analysis'], comms:'Coordinates with csm-account-manager on payment-related risk.' },
+  { id:'ap-payable', dept:'finance', role:'AP / Payable', purpose:'Bill management, vendor payments, approvals.', reportsTo:'controller', tools:'Read, Write, Email', capabilities:['Bill management','Vendor payment scheduling','Approval workflows'], comms:'Pairs with vendor-procurement on terms.' },
+  { id:'fpa-forecasting', dept:'finance', role:'FP&A / Forecasting', purpose:'Models, budget, scenario planning, runway math.', reportsTo:'controller', tools:'Read, Write, Edit', capabilities:['Financial modeling','Scenario planning','Runway calculation'], comms:'Output feeds board-prep-agent for board materials.' },
+  { id:'tax-strategist', dept:'finance', role:'Tax Strategist', purpose:'Federal/state/local. Quarterly estimates. Entity structure.', reportsTo:'controller', tools:'Read, Write, WebSearch', capabilities:['Tax planning','Quarterly estimates','Entity structure analysis'], comms:'External counsel review required for significant changes.' },
+  { id:'treasury', dept:'finance', role:'Treasury', purpose:'Cash mgmt, banking, FX, sweeps.', reportsTo:'controller', tools:'Read, Write', capabilities:['Cash management','Bank account mgmt','FX hedging analysis'], comms:'Reports cash position daily to controller.' },
+  { id:'audit-ready', dept:'finance', role:'Audit-Ready', purpose:'Documentation chain. SOC2, financial audit prep.', reportsTo:'controller', tools:'Read, Write, Edit', capabilities:['Documentation chain','SOC2 prep','Audit response'], comms:'Pairs with security-engineer on SOC2 controls.' },
+  { id:'revenue-recognition', dept:'finance', role:'Revenue Recognition', purpose:'ASC 606. SaaS MRR/ARR. Deferred revenue.', reportsTo:'controller', tools:'Read, Write, Edit', capabilities:['ASC 606 compliance','MRR/ARR calculation','Deferred revenue mgmt'], comms:'Coordinates with revenue-analyst on cohort views.' },
+
+  // Legal & Compliance
+  { id:'general-counsel', dept:'legal', isLead:true, role:'General Counsel', purpose:'Top legal. Routes to specialists.', reportsTo:'chief-of-staff', tools:'Read, Write, WebSearch', capabilities:['Legal strategy','Specialist routing','Risk weighting'], comms:'Final legal sign-off. Pulls in external counsel on novel issues.' },
+  { id:'contracts-attorney', dept:'legal', role:'Contracts Attorney', purpose:'NDAs, MSAs, SOWs, vendor contracts. Redlines.', reportsTo:'general-counsel', tools:'Read, Write, Edit', capabilities:['NDA / MSA / SOW drafting','Contract redlining','Negotiation support'], comms:'Reviews every contract before Mike signs.' },
+  { id:'compliance-officer', dept:'legal', role:'Compliance Officer', purpose:'Internal policy, KYC/AML where relevant, employment law.', reportsTo:'general-counsel', tools:'Read, Write, WebSearch', capabilities:['Policy authoring','KYC/AML','Employment law'], comms:'Cross-cuts to people, finance, and ops on policy issues.' },
+  { id:'ip-trademark', dept:'legal', role:'IP & Trademark', purpose:'Brand registrations, copyright, IP strategy.', reportsTo:'general-counsel', tools:'Read, Write, WebSearch', capabilities:['Trademark filings','Copyright strategy','IP portfolio mgmt'], comms:'Pairs with brand-strategist on new brand launches.' },
+  { id:'privacy-officer', dept:'legal', role:'Privacy Officer', purpose:'GDPR, CCPA, TCPA (huge for Loren AI), data handling policy.', reportsTo:'general-counsel', tools:'Read, Write, WebSearch', capabilities:['GDPR / CCPA / TCPA compliance','Data handling policy','Consent infrastructure'], comms:'Pairs with a2p-compliance on outbound; security-engineer on data handling.' },
+  { id:'regulatory-securities', dept:'legal', role:'Regulatory — Securities', purpose:'Reg A+, ATS, Investment Co Act. Lives in BRiX context.', reportsTo:'general-counsel', tools:'Read, Write, WebSearch, WebFetch', capabilities:['Reg A+ compliance','ATS rules','Investment Co Act','Securities marketing rules'], comms:'Mandatory gate on any investor-facing material from BRiX, BroadBridge.' },
+  { id:'regulatory-realestate', dept:'legal', role:'Regulatory — Real Estate', purpose:'RE licensing, fair housing, broker compliance across states.', reportsTo:'general-counsel', tools:'Read, Write, WebSearch', capabilities:['RE licensing','Fair housing','Broker compliance','Multi-state regs'], comms:'Mandatory on any RE marketing material.' },
+
+  // People & Talent
+  { id:'head-of-people', dept:'people', isLead:true, role:'Head of People', purpose:'Coordinates the small human team. Performance, comp, culture.', reportsTo:'chief-of-staff', tools:'Read, Write, Email', capabilities:['Team coordination','Performance mgmt','Comp planning','Culture'], comms:'Direct lines to Sanjeev, Shalu, Aakash, Harish, Julio, Nicolas.' },
+  { id:'recruiter-contractor', dept:'people', role:'Recruiter (Contractor)', purpose:'Sources contractors when human work needed. Drafts JDs.', reportsTo:'head-of-people', tools:'Read, Write, WebSearch, Email', capabilities:['Contractor sourcing','JD authoring','Screening'], comms:'Briefed by dept lead with the need; outputs candidates.' },
+  { id:'performance-tracker', dept:'people', role:'Performance Tracker', purpose:'OKR/KPI tracking for human team. Quarterly reviews.', reportsTo:'head-of-people', tools:'Read, Write, Edit', capabilities:['OKR tracking','KPI dashboards','Review cycles'], comms:'Output to head-of-people; visible to dept leads.' },
+  { id:'comms-internal', dept:'people', role:'Internal Comms', purpose:'Internal announcements, all-hands prep, team comms.', reportsTo:'head-of-people', tools:'Read, Write, Email', capabilities:['Internal announcements','All-hands prep','Team newsletters'], comms:'Cross-cuts every dept for company-wide updates.' },
+  { id:'team-onboarding', dept:'people', role:'Team Onboarding', purpose:'Onboards new humans to systems, accounts, docs.', reportsTo:'head-of-people', tools:'Read, Write, Edit, Bash', capabilities:['New hire onboarding','Account provisioning','Doc walkthroughs'], comms:'Pairs with it-systems-admin on access.' },
+
+  // Engineering & Product
+  { id:'cto', dept:'eng', isLead:true, role:'CTO', purpose:'Top engineering. Architecture decisions. Routes to specialists.', reportsTo:'chief-of-staff', tools:'Read, Write, Edit, Bash', capabilities:['Architecture decisions','Technology selection','Specialist routing'], comms:'Owns all engineering outcomes; reports up to Mike on tech bets.' },
+  { id:'product-manager', dept:'eng', role:'Product Manager', purpose:"Specs, roadmap, prioritization. Translates Mike's vision to tickets.", reportsTo:'cto', tools:'Read, Write, Edit', capabilities:['Specs','Roadmap','Prioritization','Vision translation'], comms:'Sources input from voc-analyst, head-of-cs, head-of-sales.' },
+  { id:'ux-designer', dept:'eng', role:'UX Designer', purpose:'Wireframes, user flows, design tokens enforcement.', reportsTo:'cto', tools:'Read, Write, Edit', capabilities:['Wireframing','User flows','Design tokens'], comms:'Pairs with creative-director on visual; product-manager on flows.' },
+  { id:'frontend-engineer', dept:'eng', role:'Frontend Engineer', purpose:'React/Vue/HTML+Tailwind. Brand-token compliant.', reportsTo:'cto', tools:'Read, Write, Edit, Bash', capabilities:['React / Vue / HTML+Tailwind','Brand-token-compliant UI','Component libraries'], comms:'Reviews go through code-reviewer before merge.' },
+  { id:'backend-engineer', dept:'eng', role:'Backend Engineer', purpose:'APIs, business logic, integrations.', reportsTo:'cto', tools:'Read, Write, Edit, Bash', capabilities:['API design','Business logic','3rd-party integrations'], comms:'Reviews go through code-reviewer + security-engineer.' },
+  { id:'database-architect', dept:'eng', role:'Database Architect', purpose:'Schema design, migrations, query optimization. Supabase-aware.', reportsTo:'cto', tools:'Read, Write, Edit, Bash, MCP-supabase', capabilities:['Schema design','Migrations','Query optimization','Supabase'], comms:'Migrations require approval from cto.' },
+  { id:'devops-sre', dept:'eng', role:'DevOps / SRE', purpose:'CI/CD, infra, monitoring, on-call playbooks.', reportsTo:'cto', tools:'Read, Write, Edit, Bash', capabilities:['CI/CD','Infrastructure','Monitoring','On-call playbooks'], comms:'Pairs with security-engineer; incident-response on outages.' },
+  { id:'qa-engineer', dept:'eng', role:'QA Engineer', purpose:'Test plans, regression suites, automation.', reportsTo:'cto', tools:'Read, Write, Edit, Bash', capabilities:['Test plans','Regression suites','Test automation'], comms:'Blocks releases until tests pass.' },
+  { id:'security-engineer', dept:'eng', role:'Security Engineer', purpose:'AppSec, penetration testing logic, secrets hygiene.', reportsTo:'cto', tools:'Read, Write, Edit, Bash, WebSearch', capabilities:['AppSec','Pen-test logic','Secrets hygiene','SOC2 controls'], comms:'Pairs with audit-ready, privacy-officer.' },
+  { id:'data-engineer', dept:'eng', role:'Data Engineer', purpose:'ETL, warehouse, pipeline reliability.', reportsTo:'cto', tools:'Read, Write, Edit, Bash', capabilities:['ETL','Data warehouse','Pipeline reliability'], comms:'Pairs with head-of-data on schema and freshness.' },
+  { id:'ml-engineer', dept:'eng', role:'ML Engineer', purpose:'Model selection, fine-tuning, prompt engineering for products.', reportsTo:'cto', tools:'Read, Write, Edit, Bash', capabilities:['Model selection','Fine-tuning','Prompt engineering'], comms:'Coordinates with voice-persona-manager on Loren AI voice models.' },
+  { id:'mobile-engineer', dept:'eng', role:'Mobile Engineer', purpose:'iOS/Android/RN if/when needed.', reportsTo:'cto', tools:'Read, Write, Edit, Bash', capabilities:['iOS','Android','React Native'], comms:'Currently dormant; activates when mobile work is in scope.' },
+  { id:'code-reviewer', dept:'eng', role:'Code Reviewer', purpose:'Read-only audit. PR review, style, security flags.', reportsTo:'cto', tools:'Read, Grep, Glob', capabilities:['PR review','Style enforcement','Security flagging'], comms:'Read-only. Blocks merges on style or security issues.' },
+
+  // Data & Analytics
+  { id:'head-of-data', dept:'data', isLead:true, role:'Head of Data', purpose:'Owns the data org. KPIs, dashboards, governance.', reportsTo:'chief-of-staff', tools:'Read, Write, Edit', capabilities:['KPI ownership','Dashboard strategy','Data governance'], comms:'Numbers flow through here before reaching board-prep-agent or investor-relations.' },
+  { id:'bi-analyst', dept:'data', role:'BI Analyst', purpose:'Pulls reports, builds dashboards (Looker/Metabase/Superset).', reportsTo:'head-of-data', tools:'Read, Write, Edit, Bash', capabilities:['Report pulls','Dashboards','SQL'], comms:'Output to dept leads on demand.' },
+  { id:'data-scientist', dept:'data', role:'Data Scientist', purpose:'Causal inference, modeling, ML beyond LLM.', reportsTo:'head-of-data', tools:'Read, Write, Edit, Bash', capabilities:['Causal inference','Statistical modeling','ML'], comms:'Pairs with experimentation-lead on tests.' },
+  { id:'attribution-analyst', dept:'data', role:'Attribution Analyst', purpose:'Marketing attribution, multi-touch, ROAS.', reportsTo:'head-of-data', tools:'Read, Write, Edit, MCP-windsor', capabilities:['Multi-touch attribution','ROAS analysis'], comms:'Output to head-of-marketing and paid-media-buyer.' },
+  { id:'revenue-analyst', dept:'data', role:'Revenue Analyst', purpose:'Cohort analysis, LTV, MRR drivers.', reportsTo:'head-of-data', tools:'Read, Write, Edit', capabilities:['Cohort analysis','LTV calculation','MRR / ARR drivers'], comms:'Pairs with revenue-recognition for accuracy.' },
+  { id:'experimentation-lead', dept:'data', role:'Experimentation Lead', purpose:'A/B test design, stat significance, experiment registry.', reportsTo:'head-of-data', tools:'Read, Write, Edit', capabilities:['A/B test design','Stat significance','Experiment registry'], comms:'Reviews tests from any dept proposing experiments.' },
+
+  // Real Estate
+  { id:'head-of-real-estate', dept:'re', isLead:true, role:'Head of Real Estate', purpose:'Top RE role. 20+ years CA broker context — Mike\'s domain.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['CRE strategy','Underwriting oversight','Acquisition pipeline'], comms:'Cross-brand: serves MTIP, 1PM, BRiX.' },
+  { id:'underwriter-cre', dept:'re', role:'Underwriter — CRE', purpose:'Commercial real estate underwriting. Cap rates, DSCR, IRR.', reportsTo:'head-of-real-estate', tools:'Read, Write, Edit, Bash', capabilities:['Cap rate analysis','DSCR / LTV / DCR math','IRR modeling','Stabilized NOI'], comms:'Output is the deal memo. Reviewed by risk-officer + controller.' },
+  { id:'underwriter-residential', dept:'re', role:'Underwriter — Residential', purpose:'SFR/MFR underwriting. ARV, BRRRR, fix-flip.', reportsTo:'head-of-real-estate', tools:'Read, Write, Edit, Bash', capabilities:['ARV calculation','BRRRR / fix-flip math','Rental analysis'], comms:'Same review chain as CRE.' },
+  { id:'comp-analyst', dept:'re', role:'Comp Analyst', purpose:'Comparable sales/leases. Market positioning.', reportsTo:'head-of-real-estate', tools:'Read, Write, WebSearch, WebFetch', capabilities:['Comparable sales pulls','Lease comps','Market positioning'], comms:'Feeds underwriters on any new deal.' },
+  { id:'market-analyst', dept:'re', role:'Market Analyst', purpose:'Submarket trends, demographics, supply/demand.', reportsTo:'head-of-real-estate', tools:'Read, Write, WebSearch, WebFetch', capabilities:['Submarket analysis','Demographics','Supply/demand'], comms:'Pairs with comp-analyst on context.' },
+  { id:'acquisitions-analyst', dept:'re', role:'Acquisitions Analyst', purpose:'Sources deals, runs initial screen, builds offer memos.', reportsTo:'head-of-real-estate', tools:'Read, Write, Edit', capabilities:['Deal sourcing','Initial screening','Offer memos'], comms:'Hands qualified deals to underwriter.' },
+  { id:'asset-manager', dept:'re', role:'Asset Manager', purpose:'Post-acquisition. NOI optimization, capex tracking.', reportsTo:'head-of-real-estate', tools:'Read, Write, Edit', capabilities:['NOI optimization','Capex tracking','Performance vs. underwrite'], comms:'Reports performance vs. underwrite to controller.' },
+  { id:'loi-offer-builder', dept:'re', role:'LOI / Offer Builder', purpose:'Drafts LOIs, offers, deal-room kickoffs. 1PM-aware.', reportsTo:'head-of-real-estate', tools:'Read, Write, Edit', capabilities:['LOI drafting','Offer templates','Deal-room kickoff'], comms:'Reviews go through contracts-attorney.' },
+  { id:'lease-abstractor', dept:'re', role:'Lease Abstractor', purpose:'Pulls key terms from leases. Tenant Intelligence-grade.', reportsTo:'head-of-real-estate', tools:'Read, Write, Edit', capabilities:['Lease term extraction','Tenant intelligence','Renewal/option tracking'], comms:'Output feeds asset-manager and underwriter.' },
+  { id:'title-escrow-coordinator', dept:'re', role:'Title / Escrow Coordinator', purpose:'Coordinates closings. Title curative items.', reportsTo:'head-of-real-estate', tools:'Read, Write, Email', capabilities:['Title coordination','Escrow management','Curative items'], comms:'Pairs with contracts-attorney on closing docs.' },
+  { id:'property-tour-coordinator', dept:'re', role:'Property Tour Coordinator', purpose:'Tour booking, virtual tours, broker showings. Loren AI integrated.', reportsTo:'head-of-real-estate', tools:'Read, Write, Calendar, Email', capabilities:['Tour scheduling','Virtual tour mgmt','Broker showings'], comms:'Integrates with Loren AI lead-qualifier-voice for inbound.' },
+
+  // Voice & Outbound
+  { id:'head-of-voice', dept:'voice', isLead:true, role:'Head of Voice', purpose:'Owns voice product, call quality, telephony.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['Voice product ownership','Call quality','Telephony strategy'], comms:'Loren AI core; pairs with head-of-cs on client deployment.' },
+  { id:'voice-persona-manager', dept:'voice', role:'Voice Persona Manager', purpose:'Defines voice agents per client (ARIA, VICTOR, etc.). Owns prompts + voices.', reportsTo:'head-of-voice', tools:'Read, Write, Edit', capabilities:['Persona design','Voice selection','System prompt authoring'], comms:'Pairs with ml-engineer on model tuning.' },
+  { id:'script-optimizer', dept:'voice', role:'Script Optimizer', purpose:'Iterates call scripts based on QA + outcomes. Mike\'s bold/pattern-interrupt style.', reportsTo:'head-of-voice', tools:'Read, Write, Edit', capabilities:['Script iteration','Pattern-interrupt openers','Outcome-based tuning'], comms:'Sources outcomes from call-qa-analyst.' },
+  { id:'call-qa-analyst', dept:'voice', role:'Call QA Analyst', purpose:'Reviews call recordings/transcripts. Flags failures, training data.', reportsTo:'head-of-voice', tools:'Read, Write', capabilities:['Call review','Failure flagging','Training data extraction'], comms:'Output feeds script-optimizer + voice-persona-manager.' },
+  { id:'a2p-compliance', dept:'voice', role:'A2P Compliance', purpose:'A2P 10DLC, brand registration, TCPA-aware messaging.', reportsTo:'head-of-voice', tools:'Read, Write, WebSearch', capabilities:['A2P 10DLC registration','Brand verification','TCPA-aware messaging'], comms:'Mandatory gate before any outbound campaign launches.' },
+  { id:'telephony-engineer', dept:'voice', role:'Telephony Engineer', purpose:'Retell, Twilio, number provisioning, SIP.', reportsTo:'head-of-voice', tools:'Read, Write, Edit, Bash', capabilities:['Retell config','Twilio mgmt','Number provisioning','SIP'], comms:'Pairs with onboarding-specialist for client deployments.' },
+  { id:'lead-qualifier-voice', dept:'voice', role:'Lead Qualifier (Voice)', purpose:'The actual inbound voice agent persona for listing pages.', reportsTo:'head-of-voice', tools:'Read, Write', capabilities:['Inbound voice qualification','Lead scoring (live)','Handoff routing'], comms:'Hands qualified leads to property-tour-coordinator or sales.' },
+  { id:'outbound-dialer-strategist', dept:'voice', role:'Outbound Dialer Strategist', purpose:'Outbound campaign design. Lists, cadence, throttling.', reportsTo:'head-of-voice', tools:'Read, Write, Edit', capabilities:['Campaign design','List management','Cadence / throttling','Time-of-day strategy'], comms:'Coordinates with sdr-cold-outbound + a2p-compliance.' },
+
+  // Capital Markets & IR
+  { id:'head-of-capital-markets', dept:'cap', isLead:true, role:'Head of Capital Markets', purpose:'Top capital markets. Coordinates raises, IR strategy.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['Raise coordination','IR strategy','Capital stack design'], comms:'Heavy for BRiX, BroadBridge.' },
+  { id:'investor-relations', dept:'cap', role:'Investor Relations', purpose:'Investor comms, updates, FAQ, materials.', reportsTo:'head-of-capital-markets', tools:'Read, Write, Edit, Email', capabilities:['LP communications','FAQ maintenance','Update letters'], comms:'Final pass via factcheck-auditor + regulatory-securities + head-of-qa.' },
+  { id:'pitch-deck-builder', dept:'cap', role:'Pitch Deck Builder', purpose:'Decks for raises, board, partners. Gamma-aware.', reportsTo:'head-of-capital-markets', tools:'Read, Write, Edit, MCP-gamma', capabilities:['Pitch deck assembly','Board deck','Partner decks','Gamma flows'], comms:'Sources visuals from creative-director.' },
+  { id:'data-room-manager', dept:'cap', role:'Data Room Manager', purpose:'VDR organization, NDA tracking, access control.', reportsTo:'head-of-capital-markets', tools:'Read, Write, Edit', capabilities:['VDR organization','NDA tracking','Access control'], comms:'Coordinates with contracts-attorney on NDAs.' },
+  { id:'cap-table-analyst', dept:'cap', role:'Cap Table Analyst', purpose:'Cap table modeling, dilution, waterfall.', reportsTo:'head-of-capital-markets', tools:'Read, Write, Edit', capabilities:['Cap table modeling','Dilution analysis','Waterfall scenarios'], comms:'Output reviewed by controller and regulatory-securities.' },
+  { id:'competitive-intel', dept:'cap', role:'Competitive Intel', purpose:'Competitor teardowns. Fundrise/Arrived/CrowdStreet/etc.', reportsTo:'head-of-capital-markets', tools:'Read, Write, WebSearch, WebFetch', capabilities:['Competitor teardown','Positioning analysis','Threat scanning'], comms:'Output feeds investor-relations + head-of-marketing.' },
+
+  // Quality & Risk
+  { id:'head-of-qa', dept:'qa', isLead:true, role:'Head of Quality & Risk', purpose:'Owns quality across all output. Final gate.', reportsTo:'chief-of-staff', tools:'Read, Write, Task', capabilities:['QA orchestration','Final sign-off','Sub-auditor coordination'], comms:'No artifact reaches Mike or external until this gate returns PASS.' },
+  { id:'brand-compliance-auditor', dept:'qa', role:'Brand Compliance Auditor', purpose:'Verifies brand tokens, voice, footer requirements (LOREN AI). Read-only.', reportsTo:'head-of-qa', tools:'Read, Grep, Glob', capabilities:['BRiX spelling','Loren AI footer','Voice/tone match','Token enforcement'], comms:'Read-only. Blocks on any deviation.' },
+  { id:'factcheck-auditor', dept:'qa', role:'Factcheck Auditor', purpose:'Verifies claims, citations, regulatory accuracy. Read-only.', reportsTo:'head-of-qa', tools:'Read, WebSearch, WebFetch', capabilities:['Claim verification','Citation checking','Regulatory accuracy'], comms:'Read-only. Mandatory on investor-facing material.' },
+  { id:'risk-officer', dept:'qa', role:'Risk Officer', purpose:'Identifies operational, legal, reputational risk. Pre-launch reviews.', reportsTo:'head-of-qa', tools:'Read, Write', capabilities:['Risk identification','Pre-launch review','Reputational analysis'], comms:'Can BLOCK any artifact + escalate to Mike.' },
+  { id:'incident-response', dept:'qa', role:'Incident Response', purpose:'When something breaks: triage, comms, post-mortem.', reportsTo:'head-of-qa', tools:'Read, Write, Edit', capabilities:['Incident triage','Status comms','Post-mortem authoring'], comms:'P0/P1 escalates to Mike immediately.' },
+];
+
+// =====================================================================
+// STATE
+// =====================================================================
+const state = {
+  apiKey: localStorage.getItem('makabi-api-key') || '',
+  model: localStorage.getItem('makabi-model') || 'claude-sonnet-4-6',
+  bridgeUrl: localStorage.getItem('makabi-bridge-url') || 'http://localhost:7777',
+  bridgeOn: localStorage.getItem('makabi-bridge-on') === '1',
+  history: JSON.parse(localStorage.getItem('makabi-history') || '[]'),
+  currentPlan: null,
+  tasksToday: JSON.parse(localStorage.getItem('makabi-tasks-today') || '[]'),
+};
+
+// =====================================================================
+// TAB SWITCHING
+// =====================================================================
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+  document.getElementById('tab-' + t.dataset.tab).classList.remove('hidden');
+}));
+
+// =====================================================================
+// ORG CHART
+// =====================================================================
+function renderOrgChart() {
+  const grid = document.getElementById('depts-grid');
+  grid.innerHTML = DEPARTMENTS.map(d => {
+    const agents = AGENTS.filter(a => a.dept === d.id);
+    const lead = agents.find(a => a.isLead);
+    const rest = agents.filter(a => !a.isLead);
+    return `
+      <div class="panel dept-tile p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2"><span class="text-xl">${d.icon}</span><div class="serif text-lg">${d.name}</div></div>
+          <span class="badge">${agents.length}</span>
+        </div>
+        <div class="text-xs text-[var(--muted)] mb-3">${d.desc}</div>
+        ${lead ? `<div class="agent-card panel-2 p-2 mb-2 cursor-pointer" data-agent="${lead.id}"><div class="flex items-center justify-between"><div class="text-sm font-mono">${lead.id}</div><span class="badge badge-lead">Lead</span></div><div class="text-xs text-[var(--muted)] mt-0.5">${lead.role.replace(/\(.*\)/,'').trim()}</div></div>` : ''}
+        ${rest.map(a => `<div class="agent-card panel-2 p-2 mb-1 cursor-pointer" data-agent="${a.id}"><div class="text-sm font-mono">${a.id}</div><div class="text-xs text-[var(--muted)] truncate" title="${escapeAttr(a.purpose)}">${a.purpose}</div></div>`).join('')}
+      </div>`;
+  }).join('');
+
+  document.querySelectorAll('.agent-card').forEach(c => c.addEventListener('click', () => openAgentModal(c.dataset.agent)));
+}
+
+// =====================================================================
+// DIRECTORY
+// =====================================================================
+function renderDirectory() {
+  const sel = document.getElementById('deptFilter');
+  sel.innerHTML = '<option value="">All departments (' + AGENTS.length + ')</option>' + DEPARTMENTS.map(d => `<option value="${d.id}">${d.icon} ${d.name} (${AGENTS.filter(a=>a.dept===d.id).length})</option>`).join('');
+  filterDirectory();
+}
+
+function filterDirectory() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const dept = document.getElementById('deptFilter').value;
+  const list = AGENTS.filter(a => {
+    if (dept && a.dept !== dept) return false;
+    if (!q) return true;
+    const blob = (a.id + ' ' + a.role + ' ' + a.purpose + ' ' + a.capabilities.join(' ') + ' ' + a.comms).toLowerCase();
+    return blob.includes(q);
+  });
+  const container = document.getElementById('agentList');
+  document.getElementById('filterStats').textContent = `${list.length} of ${AGENTS.length} agents shown`;
+  container.innerHTML = list.map(a => {
+    const dept = DEPARTMENTS.find(d => d.id === a.dept);
+    return `<div class="panel p-3 agent-card" data-agent="${a.id}">
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-mono text-sm">${a.id}</div>
+        ${a.isLead ? '<span class="badge badge-lead">Lead</span>' : '<span class="badge">' + dept.icon + ' ' + dept.name + '</span>'}
+      </div>
+      <div class="text-sm mb-1">${a.role}</div>
+      <div class="text-xs text-[var(--muted)]">${a.purpose}</div>
+    </div>`;
+  }).join('');
+  container.querySelectorAll('.agent-card').forEach(c => c.addEventListener('click', () => openAgentModal(c.dataset.agent)));
+}
+
+document.getElementById('searchInput').addEventListener('input', filterDirectory);
+document.getElementById('deptFilter').addEventListener('change', filterDirectory);
+
+// =====================================================================
+// AGENT MODAL
+// =====================================================================
+function openAgentModal(id) {
+  const a = AGENTS.find(x => x.id === id);
+  if (!a) return;
+  const dept = DEPARTMENTS.find(d => d.id === a.dept);
+  const peers = AGENTS.filter(x => x.dept === a.dept && x.id !== a.id);
+  document.getElementById('modalDept').textContent = `${dept.icon} ${dept.name}`;
+  document.getElementById('modalName').textContent = a.id;
+  document.getElementById('modalRole').textContent = a.role + (a.isLead ? ' — Department Lead' : '');
+  document.getElementById('modalBody').innerHTML = `
+    <div><div class="text-xs uppercase tracking-widest gold mb-1">Purpose</div><div class="text-sm">${a.purpose}</div></div>
+    <div><div class="text-xs uppercase tracking-widest gold mb-1">Reports to</div><div class="text-sm font-mono">${a.reportsTo}</div></div>
+    <div><div class="text-xs uppercase tracking-widest gold mb-1">Capabilities</div><ul class="text-sm space-y-1">${a.capabilities.map(c => `<li>• ${c}</li>`).join('')}</ul></div>
+    <div><div class="text-xs uppercase tracking-widest gold mb-1">How they communicate</div><div class="text-sm">${a.comms}</div></div>
+    <div><div class="text-xs uppercase tracking-widest gold mb-1">Tools</div><div class="text-sm font-mono text-[var(--muted)]">${a.tools}</div></div>
+    <div><div class="text-xs uppercase tracking-widest gold mb-1">Department peers (${peers.length})</div><div class="flex flex-wrap gap-1.5">${peers.map(p => `<button class="badge hover:badge-gold" onclick="openAgentModal('${p.id}')">${p.id}</button>`).join('')}</div></div>
+    <div class="pt-2 flex gap-2"><button class="btn-gold btn text-sm" onclick="usePlanner('Have ${a.id} ')">Use ${a.id} in a plan →</button></div>
+  `;
+  document.getElementById('agentModal').classList.remove('hidden');
+}
+
+document.getElementById('closeModal').addEventListener('click', () => document.getElementById('agentModal').classList.add('hidden'));
+document.getElementById('agentModal').addEventListener('click', e => { if (e.target.id === 'agentModal') e.target.classList.add('hidden'); });
+
+window.openAgentModal = openAgentModal;
+window.usePlanner = function(seed) {
+  document.getElementById('agentModal').classList.add('hidden');
+  document.querySelector('[data-tab="planner"]').click();
+  document.getElementById('askInput').value = seed;
+  document.getElementById('askInput').focus();
+};
+
+// =====================================================================
+// SETTINGS
+// =====================================================================
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  document.getElementById('apiKeyInput').value = state.apiKey;
+  document.getElementById('modelSelect').value = state.model;
+  document.getElementById('settingsModal').classList.remove('hidden');
+});
+document.getElementById('closeSettings').addEventListener('click', () => document.getElementById('settingsModal').classList.add('hidden'));
+document.getElementById('settingsModal').addEventListener('click', e => { if (e.target.id === 'settingsModal') e.target.classList.add('hidden'); });
+document.getElementById('saveSettings').addEventListener('click', () => {
+  state.apiKey = document.getElementById('apiKeyInput').value.trim();
+  state.model = document.getElementById('modelSelect').value;
+  localStorage.setItem('makabi-api-key', state.apiKey);
+  localStorage.setItem('makabi-model', state.model);
+  document.getElementById('settingsModal').classList.add('hidden');
+});
+
+// =====================================================================
+// QUICK PATTERNS
+// =====================================================================
+document.querySelectorAll('.quick-pat').forEach(b => b.addEventListener('click', () => {
+  document.getElementById('askInput').value = b.dataset.pat;
+  document.getElementById('askInput').focus();
+}));
+
+// =====================================================================
+// PLANNER — calls Claude API to generate a routing plan
+// =====================================================================
+const PLANNER_SYSTEM = `You are the Routing Planner for Master Makabi's 113-agent autonomous workforce.
+
+Your job: take an inbound ask and return a JSON execution plan.
+
+You know these 14 departments and 113 agents (id list below). Use the orchestration rules to route work:
+- Single specialist asks: call the specialist directly.
+- Single department: call the dept lead.
+- Cross-functional: chief-of-staff routes.
+- Investor / regulator-facing: factcheck-auditor + regulatory-securities (or regulatory-realestate) mandatory.
+- Brand-touching (web, deck, social, video): brand-compliance-auditor mandatory.
+- Outbound (cold email/SMS/voice): a2p-compliance must clear; never auto-send without Mike's explicit yes.
+- Red-class actions (irreversible/external): require Mike approval.
+- Always close with decision-logger.
+
+Brand rules (P0 — never violate):
+- BRiX (capital B, capital R, lowercase i, capital X)
+- Loren AI (two words, both capitalized)
+- 1PM AI (numeral 1, capital PM, space, capital AI)
+- Web deliverables include "Powered by LOREN AI" in the footer
+
+Tone: bold/tension/pattern-interrupt for cold outbound; direct operator-voice internal; confident outcome-oriented client-facing.
+
+Output STRICTLY this JSON shape (no markdown, no prose around it):
+{
+  "summary": "one-sentence restatement of what we're shipping",
+  "classification": "single-specialist | single-department | cross-functional | investor-facing | brand-touching | outbound",
+  "mode": "balanced | fast | cheap | thorough",
+  "dag": {
+    "parallel_pod": [{"agent":"id","goal":"one sentence","output":"deliverable filename + format"}],
+    "synthesizer": {"agent":"id","goal":"merge step"},
+    "qa_gate": ["agent ids in order"],
+    "delivery": {"agent":"chief-of-staff","format":"per orchestrator template"}
+  },
+  "estimated_time_minutes": 0,
+  "estimated_cost_usd": 0,
+  "claude_code_command": "claude \\"<prompt the user pastes into Claude Code or Cowork>\\"",
+  "risks": ["bullet"],
+  "needs_mike_approval": true|false,
+  "approval_reason": "if needs_mike_approval, why"
+}
+
+The "claude_code_command" must be a single line. The prompt inside should explicitly:
+1. Tell chief-of-staff (or the entry agent) the goal
+2. Name the parallel pod members
+3. Name the synthesizer
+4. List the QA gate auditors
+5. End with: 'log via decision-logger.'
+
+Pick the right minimum agent set for the mode:
+- fast: max parallelism, drop optional agents
+- cheap: serial, minimum auditors required by rules
+- balanced (default): parallel where independent, single QA pass
+- thorough: double QA, full factcheck, risk-officer always on
+
+Estimated time and cost are operator-grade rough estimates; under-promise.`;
+
+const AGENTS_FOR_PROMPT = AGENTS.map(a => `${a.id} (${a.role.replace(/\(.*\)/,'').trim()}, dept: ${a.dept})`).join('\n');
+
+async function generatePlan(userAsk, mode) {
+  if (!state.apiKey) { alert('Set your Anthropic API key in Settings (top right) first.'); document.getElementById('settingsBtn').click(); return null; }
+  const sys = PLANNER_SYSTEM + '\n\nAgent registry:\n' + AGENTS_FOR_PROMPT;
+  const userMsg = `Mode: ${mode}\n\nAsk: ${userAsk}`;
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': state.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: state.model,
+      max_tokens: 2000,
+      system: sys,
+      messages: [{ role: 'user', content: userMsg }],
+    })
+  });
+  if (!resp.ok) {
+    const t = await resp.text();
+    throw new Error('Anthropic API: ' + resp.status + ' — ' + t);
+  }
+  const data = await resp.json();
+  const text = data.content[0].text.trim();
+  let plan;
+  try { plan = JSON.parse(text); }
+  catch (e) {
+    const match = text.match(/\{[\s\S]+\}/);
+    if (match) plan = JSON.parse(match[0]); else throw new Error('Could not parse plan JSON.');
+  }
+  return plan;
+}
+
+document.getElementById('planBtn').addEventListener('click', async () => {
+  const ask = document.getElementById('askInput').value.trim();
+  if (!ask) return;
+  const mode = document.getElementById('planMode').value;
+  const btn = document.getElementById('planBtn');
+  btn.disabled = true;
+  btn.textContent = 'Planning…';
+  document.getElementById('planResult').classList.remove('hidden');
+  document.getElementById('planContent').innerHTML = '<div class="panel p-4 typing">Routing through chief-of-staff</div>';
+  try {
+    const plan = await generatePlan(ask, mode);
+    state.currentPlan = plan;
+    state.history.unshift({ ask, mode, plan, ts: Date.now() });
+    state.history = state.history.slice(0, 12);
+    localStorage.setItem('makabi-history', JSON.stringify(state.history));
+    renderPlan(plan);
+    renderHistory();
+  } catch (e) {
+    document.getElementById('planContent').innerHTML = `<div class="panel p-4 badge-red">Plan failed: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate plan →';
+  }
+});
+
+function renderPlan(plan) {
+  const dag = plan.dag || {};
+  const parallel = dag.parallel_pod || [];
+  const html = `
+    <div class="panel p-4">
+      <div class="text-xs uppercase tracking-widest gold mb-1">Summary</div>
+      <div class="text-sm mb-3">${escapeHtml(plan.summary || '')}</div>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <span class="badge badge-gold">${plan.classification}</span>
+        <span class="badge">mode: ${plan.mode}</span>
+        <span class="badge">~${plan.estimated_time_minutes} min</span>
+        <span class="badge">~$${(plan.estimated_cost_usd ?? 0).toFixed(2)}</span>
+        ${plan.needs_mike_approval ? '<span class="badge badge-red">Needs Mike approval</span>' : '<span class="badge badge-green">Auto-executable</span>'}
+      </div>
+    </div>
+
+    <div class="panel p-4">
+      <div class="text-xs uppercase tracking-widest gold mb-3">DAG</div>
+      <div class="space-y-3">
+        <div>
+          <div class="text-xs text-[var(--muted)] mb-1.5">Parallel pod (${parallel.length})</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            ${parallel.map(p => `<div class="panel-2 p-2"><div class="font-mono text-xs gold">${p.agent}</div><div class="text-xs mt-1">${escapeHtml(p.goal||'')}</div><div class="text-xs text-[var(--muted)] mt-1">→ ${escapeHtml(p.output||'')}</div></div>`).join('')}
+          </div>
+        </div>
+        ${dag.synthesizer ? `<div><div class="text-xs text-[var(--muted)] mb-1.5">Synthesizer</div><div class="panel-2 p-2"><div class="font-mono text-xs gold">${dag.synthesizer.agent}</div><div class="text-xs mt-1">${escapeHtml(dag.synthesizer.goal||'')}</div></div></div>` : ''}
+        ${dag.qa_gate && dag.qa_gate.length ? `<div><div class="text-xs text-[var(--muted)] mb-1.5">QA gate</div><div class="flex flex-wrap gap-1.5">${dag.qa_gate.map(a => `<span class="badge badge-yellow">${a}</span>`).join('')}</div></div>` : ''}
+        ${dag.delivery ? `<div><div class="text-xs text-[var(--muted)] mb-1.5">Delivery</div><div class="panel-2 p-2"><div class="font-mono text-xs gold">${dag.delivery.agent}</div><div class="text-xs mt-1">${escapeHtml(dag.delivery.format||'')}</div></div></div>` : ''}
+      </div>
+    </div>
+
+    ${plan.risks && plan.risks.length ? `<div class="panel p-4"><div class="text-xs uppercase tracking-widest gold mb-2">Risks</div><ul class="text-sm space-y-1">${plan.risks.map(r => `<li>• ${escapeHtml(r)}</li>`).join('')}</ul></div>` : ''}
+
+    ${plan.needs_mike_approval ? `<div class="panel p-4 gold-border"><div class="text-xs uppercase tracking-widest gold mb-2">⚠ Approval required</div><div class="text-sm">${escapeHtml(plan.approval_reason || '')}</div></div>` : ''}
+
+    <div class="panel p-4">
+      <div class="text-xs uppercase tracking-widest gold mb-2">Claude Code command</div>
+      <pre class="cmd-out">${escapeHtml(plan.claude_code_command || '')}</pre>
+    </div>
+  `;
+  document.getElementById('planContent').innerHTML = html;
+  // sync command to Execute tab
+  const cmdPre = document.querySelector('#tab-execute pre.cmd-out');
+  if (cmdPre) cmdPre.textContent = plan.claude_code_command || '';
+}
+
+document.getElementById('copyCmdBtn').addEventListener('click', () => {
+  if (!state.currentPlan) return;
+  navigator.clipboard.writeText(state.currentPlan.claude_code_command || '');
+  const btn = document.getElementById('copyCmdBtn');
+  const o = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => btn.textContent = o, 1400);
+});
+
+document.getElementById('executeBtn').addEventListener('click', () => {
+  if (!state.currentPlan) return;
+  document.querySelector('[data-tab="execute"]').click();
+  if (state.bridgeOn) executeViaBridge();
+  else alert('Bridge is OFF. Copy the command and paste into Claude Code, or enable the bridge in the Execute tab.');
+});
+
+function renderHistory() {
+  const el = document.getElementById('history');
+  if (!state.history.length) { el.innerHTML = '<div class="text-xs text-[var(--muted)] italic">No plans yet.</div>'; return; }
+  el.innerHTML = state.history.map((h, i) => `
+    <div class="panel-2 p-2 cursor-pointer" onclick="loadHistory(${i})">
+      <div class="text-xs text-[var(--muted)]">${new Date(h.ts).toLocaleString()} · ${h.mode}</div>
+      <div class="text-sm truncate">${escapeHtml(h.ask)}</div>
+    </div>
+  `).join('');
+}
+window.loadHistory = function(i) {
+  const h = state.history[i];
+  document.getElementById('askInput').value = h.ask;
+  document.getElementById('planMode').value = h.mode;
+  state.currentPlan = h.plan;
+  document.getElementById('planResult').classList.remove('hidden');
+  renderPlan(h.plan);
+};
+
+// =====================================================================
+// EXECUTE — local bridge
+// =====================================================================
+document.getElementById('bridgeUrl').value = state.bridgeUrl;
+document.getElementById('bridgeOn').checked = state.bridgeOn;
+document.getElementById('bridgeUrl').addEventListener('input', e => { state.bridgeUrl = e.target.value; localStorage.setItem('makabi-bridge-url', state.bridgeUrl); });
+document.getElementById('bridgeOn').addEventListener('change', e => { state.bridgeOn = e.target.checked; localStorage.setItem('makabi-bridge-on', state.bridgeOn ? '1' : '0'); });
+
+document.getElementById('bridgeTestBtn').addEventListener('click', async () => {
+  const status = document.getElementById('bridgeStatus');
+  status.textContent = 'Pinging…';
+  try {
+    const r = await fetch(state.bridgeUrl + '/run', { method: 'OPTIONS' });
+    status.innerHTML = r.ok || r.status === 204 ? '<span class="text-green-400">✓ Bridge reachable.</span>' : `<span class="text-red-400">HTTP ${r.status}</span>`;
+  } catch (e) {
+    status.innerHTML = `<span class="text-red-400">Unreachable: ${e.message}. Make sure node workforce-bridge.js is running.</span>`;
+  }
+});
+
+async function executeViaBridge() {
+  if (!state.currentPlan) return;
+  const stream = document.getElementById('execStream');
+  stream.innerHTML = '<span class="text-[var(--muted)]">Connecting to bridge…</span>';
+  const cmd = state.currentPlan.claude_code_command || '';
+  const prompt = cmd.replace(/^claude\s+"/, '').replace(/"$/,'').replace(/\\"/g,'"');
+  try {
+    const resp = await fetch(state.bridgeUrl + '/run', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    stream.innerHTML = '';
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
+      for (const p of parts) {
+        if (!p.startsWith('data: ')) continue;
+        try {
+          const ev = JSON.parse(p.slice(6));
+          const span = document.createElement('span');
+          if (ev.type === 'err') span.style.color = '#f08a7a';
+          else if (ev.type === 'done') span.style.color = '#7adf95';
+          span.textContent = ev.text || (ev.type === 'done' ? `\n\n[exit ${ev.code}]` : '');
+          stream.appendChild(span);
+          stream.scrollTop = stream.scrollHeight;
+        } catch (e) {}
+      }
+    }
+    addTaskToday(state.currentPlan);
+  } catch (e) {
+    stream.innerHTML += `<span style="color:#f08a7a">\nBridge error: ${e.message}</span>`;
+  }
+}
+
+function addTaskToday(plan) {
+  state.tasksToday.unshift({ ts: Date.now(), summary: plan.summary, classification: plan.classification });
+  state.tasksToday = state.tasksToday.slice(0, 30);
+  localStorage.setItem('makabi-tasks-today', JSON.stringify(state.tasksToday));
+  renderTasksToday();
+}
+
+function renderTasksToday() {
+  const el = document.getElementById('tasksToday');
+  const today = state.tasksToday.filter(t => new Date(t.ts).toDateString() === new Date().toDateString());
+  if (!today.length) { el.innerHTML = '<div class="text-[var(--muted)] italic">No tasks yet today.</div>'; return; }
+  el.innerHTML = today.map(t => `<div class="panel-2 p-2"><div class="text-xs text-[var(--muted)]">${new Date(t.ts).toLocaleTimeString()} · ${t.classification}</div><div class="text-xs">${escapeHtml(t.summary||'')}</div></div>`).join('');
+}
+
+document.getElementById('clearStreamBtn').addEventListener('click', () => {
+  document.getElementById('execStream').innerHTML = '<span class="text-[var(--muted)]">Cleared.</span>';
+});
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function escapeHtml(s) { return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s) { return escapeHtml(s); }
+
+// =====================================================================
+// INIT
+// =====================================================================
+renderOrgChart();
+renderDirectory();
+renderHistory();
+renderTasksToday();
+</script>
+
+</body>
+</html>
